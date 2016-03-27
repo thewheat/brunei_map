@@ -1,0 +1,29 @@
+{
+  "name": "BruneiMap",
+  "authors": [
+    "Timothy Lim <tim@thewheatfield.org>"
+  ],
+  "description": "Shows the Brunei map with ability to search mukims and kampongs",
+  "main": "index.html",
+  "moduleType": [],
+  "keywords": [
+    "brunei",
+    "map",
+    "mukims",
+    "kampongs"
+  ],
+  "license": "MIT",
+  "homepage": "http://thewheatfield.org",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "openlayers": "*",
+    "bootstrap": "^3.3.6",
+    "jquery": "^2.2.2"
+  }
+}

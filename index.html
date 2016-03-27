@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Brunei Districts, Mukims, Kampongs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="ol/ol.css" type="text/css">
+    <script src="ol/ol.js"></script>
+    <script src="bower_components/jquery/dist/jquery.min.js"></script>
+    <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.min.css">
+    <script src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+
+    <style type="text/css">
+      button.btn {
+        margin-bottom: 0.5em;
+      }
+      .toolbar{
+        width:90%;
+        margin: 0.5em auto;
+      }
+      #map {
+        margin: 0 1em;
+        height: 400px;
+      }
+      .featureRow {
+        clear: both;
+      }
+      .popover{
+         max-width: 30em; 
+         width: 30em; 
+      }
+      .clear{
+        clear: both;
+      }
+      dt, dd { float: left }
+      dt { clear:both }
+      dt {
+        width: 4em;
+        margin-right: 1em;
+        text-align: right;
+      }
+      #searchOutput {
+        max-height: 300px;
+        overflow-y: scroll;
+        margin: 0;
+        border: 1px solid #ccc;
+        margin-top: 0.2em;
+      }
+      .colorbox{
+        height:1em;
+        margin-bottom: 0.2em;
+      }
+      .selected {
+        background-color: #ff3333;
+      }
+      .hover {
+        background-color: #cc33ff;
+      }
+
+      h1,h2,h3,h4,h5 {
+        margin: 0;
+      }
+      .colorbox.clear{
+        margin-bottom: 0;
+      }
+      @media (max-width: 768px) {
+        #map {
+          height: 200px;
+        }
+      }
+
+  </style>
+  </head>
+  <body class="container-fluid">
+    <div class='toolbar'>
+      <div class="row">
+        <button class='col-xs-12 btn btn-primary' onclick="findMe()" id="find">Locate Me</button>
+      </div>
+      <div class="row">
+        <button class='col-xs-offset-1 col-xs-4 btn btn-info' onclick="selectMukims();">Mukims</button>
+        <button class='col-xs-offset-2 col-xs-4 btn btn-info' onclick='selectKampongs();'>Kampongs</button>
+      </div>
+      <div id="info"></div>
+    </div>
+    <div id="map" class="map"></div>
+
+  <div class="toolbar row">
+    <div class="col-sm-4 toggleParent">
+
+      <div class='btn-group'>
+        <button class='btn btn-info visible-xs-block' onclick='toggleMe(this)'>Search</button>      
+        <span class='btn'><h4><span class='hidden-xs'>Showing: </span><span id='mode'></span></h4></span>
+      </div>
+
+      <div class='toggleMe hidden-xs'>
+        <input id="search" placeholder="Search...">
+        <ol id="searchOutput">
+          <li>--No Results--</li>
+        </ol>
+      </div>
+    </div>
+    <div class="col-sm-4 toggleParent">
+      <div class='clear selected colorbox hidden-xs'></div>
+      <div class='btn-group'>
+        <button class='btn btn-info visible-xs-block' onclick='toggleMe(this)'>Show</button>      
+        <span class='btn'><h4>Selected Area</h4></span>
+      </div>
+      <div class='selected colorbox'></div>
+      <div class='toggleMe hidden-xs'>
+        <div id="popup" title=""></div>
+        <div class='clear selected colorbox'></div>
+      </div>
+    </div>
+    <div class="col-sm-4 toggleParent">
+      <div class='clear hover colorbox hidden-xs'></div>
+      <div class='btn-group'>
+        <button class='btn btn-info visible-xs-block' onclick='toggleMe(this)'>Show</button>      
+        <span class='btn'><h4>Hover Area</h4></span>
+      </div>
+      <div class='hover colorbox'></div>
+      <div class='toggleMe hidden-xs'>
+        <div id="hover" title=""></div>
+        <div class='clear hover colorbox'></div>
+      </div>
+    </div>
+  </div>
+    <script>
+    function selectKampongs(){
+      clearAndShowLayer('kampongs');
+    }
+    function selectMukims(){
+      clearAndShowLayer('mukims');
+    }
+    function showLayer(name){
+      setMode(name);
+      map.addLayer(layers[name]);
+      search(name, '');
+      // needed for initial load
+      layers[name].getSource().once('change',function(e){
+        search(name, '');
+      });
+
+    }
+    function clearAndShowLayer(name){
+      clearLayers();
+      clearFeatures();
+      showLayer(name);
+    }
+    function clearLayers(){
+      for(var name in layers){
+        map.removeLayer(layers[name]);
+      }
+    }
+    function getFeaturesDetail(features){
+      var element = $('<div></div>');
+      jQuery(features).each(function(i, feature){
+        element.append(getFeatureDetail(feature));
+      });
+      return element;
+    }
+    function getFeatureDetail(feature){
+      var details = $("<dl></dl>");
+      var element = $('<div class="featureRow"></div>')
+        .append($("<h3></h3>").text(feature.get('name')))
+        .append(details);
+
+      jQuery(['id', 'location', 'mukim', 'description', 'category','area', 'length']).each(function(i,txt){
+
+        var tmp = feature.get(txt);
+        if(txt == 'location'){
+          var pos = toNormal(getFeatureCenter(feature));
+          tmp = pos[0].toFixed(7) + ", " + pos[1].toFixed(7);
+        }
+        if(tmp){
+          details
+          .append($("<dt></dt>").text(txt))
+          .append($("<dd></dd>").text(tmp));
+        }
+      });
+
+      var neighbours = boundaries[getMode()][feature.get('id')];
+      if(neighbours){
+        var ol = $("<ol></ol>").addClass('neighbours');
+
+        $(neighbours).each(function(i, item){
+          var feature = layers[getMode()].getSource().getFeatureById(item);
+          ol.append($("<li></li>").append(featureToLink(feature)));
+        });
+        details
+        .append($("<dt></dt>").text("Neighbours"))
+        .append($("<dd></dd>").html(ol));
+      }
+
+
+      return element;
+    }
+    function showFeatures(features, popup){
+      if(features.length > 0){
+          $("#"+ popup).html(getFeaturesDetail(features).html());
+      }
+    }
+    function clearFeatures(){
+      if(select && select.getFeatures())
+        select.getFeatures().clear();
+      if(selectPointerMove && selectPointerMove.getFeatures())
+        selectPointerMove.getFeatures().clear();
+    };
+    function findMe(){
+      var ori = $("#find").text();
+      $("#find").text("Finding....");
+        if (typeof(navigator.geolocation) != 'undefined') {
+            navigator.geolocation.getCurrentPosition(function(pos){ //Success
+                $("#find").text(ori);
+                console.log(toOL([pos.coords.longitude, pos.coords.latitude]));
+
+                var d = data[getMode()].getFeaturesAtCoordinate(toOL([pos.coords.longitude, pos.coords.latitude]))[0];
+                if(d){
+                  selectItem(getMode(), d.get('id'), true);
+                }
+                else{
+                map.getView().setCenter(toOL([pos.coords.longitude, pos.coords.latitude]));
+
+                }
+            }, function() { //Failure
+                alert("Could not get your location. Permission to read location has been denied");
+                $("#find").text(ori);
+            }, { //Options
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 5000
+            });
+        } else {
+            alert("Your browser does not support geolocation");
+            $("#find").text(ori);
+        }
+    }
+
+    function toOL(coordinate){
+      return ol.proj.transform(coordinate, 'EPSG:4326', 'EPSG:3857');
+    }
+    function toNormal(coordinate){
+      return ol.proj.transform(coordinate, 'EPSG:3857', 'EPSG:4326');
+    }
+
+    function featureToLink(feature){
+      var name = feature.get('name');
+      var id = feature.get('id');
+      return $("<a></a>")
+        .text(name || ("--No name-- (id: " + id + ")"))
+        .data('id', id)
+        .attr('href', id);
+
+    }
+    function search(type,text){
+      var features = [];
+      $("#searchOutput").empty();
+      var reg = new RegExp(RegExp.escape(text), "gi");
+      layers[type].getSource().forEachFeature(function(feature) {
+        if (reg.test(feature.get('name'))) {
+          $("#searchOutput").append($("<li></li>").
+            append(featureToLink(feature))
+          );
+        }
+      });
+      if($("#searchOutput").children().size() == 0){
+        $("#searchOutput").append("--No results--");
+      }
+      
+    }
+    function centerMap(coordinate){
+      map.getView().setCenter(coordinate);
+    }
+    function getFeatureCenter(feature){
+      if(!feature || !feature.getGeometry()) return;
+      var extent = feature.getGeometry().getExtent();
+      return [(extent[0]+extent[2])/2.0,(extent[1]+extent[3])/2.0];
+    }
+    function selectItem(type, id, clear){
+      if(clear) select.getFeatures().clear();
+      var feature = layers[type].getSource().getFeatureById(id);
+      select.getFeatures().push(feature);
+      showFeatures([feature], 'popup');
+      centerMap(getFeatureCenter(feature));
+    }
+    function getMode(){
+      return $("#search").data('mode');
+    }
+    function setMode(mode){
+      if(!mode) return;
+      $("#mode").text(mode.substring(0,1).toUpperCase() + mode.substring(1));
+      $("#search").data('mode',mode);
+    }
+    RegExp.escape= function(s) {
+        return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    };
+
+    function toggleMe(me){
+      $(me).closest(".toggleParent").find(".toggleMe").eq(0).toggleClass("hidden-xs");
+    }
+
+    $("#search").on('keyup change', function(){
+      // change and calling search() causes the click not to trigger
+      // so if same last search, do not call search()
+      if($(this).val() == $(this).data("last")) return;
+      search($(this).data("mode"), $(this).val());
+      $(this).data("last", $(this).val());
+    });
+    $("#searchOutput").on('click', 'a', function(e){
+      e.preventDefault();
+      console.log($(this));
+      console.log($(this).data('id'));      
+      selectItem(getMode(), $(this).data('id'),true);
+    });
+    $("#popup, #hover").on('click', '.neighbours a', function(e){
+      e.preventDefault();
+      console.log($(this).attr('href'));
+      selectItem(getMode(), $(this).attr('href'),true);
+    });
+    $("#popup, #hover").on('mouseover', '.neighbours a', function(e){
+      var feature = layers[getMode()].getSource().getFeatureById($(this).attr('href'));
+      selectPointerMove2.getFeatures().push(feature);
+    });
+    $("#popup, #hover").on('mouseout', '.neighbours a', function(e){
+      selectPointerMove2.getFeatures().clear();
+    });
+
+    var map = new ol.Map({target: 'map'});
+    var osmSource = new ol.source.OSM();
+    var osmLayer = new ol.layer.Tile({source: osmSource});
+    map.addLayer(osmLayer);
+
+    var dataArr = ['kampongs', 'mukims']; //, 'districts'];
+    var data = {};
+    var layers = {};
+    var boundaries = {};
+    var DIR = 'data/';
+    for(var i = 0; i < dataArr.length; i++){
+      var name = dataArr[i];
+      (function(n){
+        $.getJSON(DIR + n+'_boundaries.json',function(data){
+          boundaries[n] = data;
+        });
+      })(name)
+      data[name] = new ol.source.Vector({
+        url: DIR + name + '_latlon.txt.geojson',
+        format: new ol.format.GeoJSON()
+      });
+
+      layers[name] = new ol.layer.Vector({source: data[name]});
+      //map.addLayer(layers[name]);
+    }
+
+    map.setView(new ol.View({
+     center: toOL([114.93935108184814, 4.88513221987084]),
+     zoom: 13
+    }));
+
+    //selectMukims();
+    selectKampongs();
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // interactions - 1 
+
+    var style1 =   new ol.style.Style({stroke: new ol.style.Stroke({color: '#ff3333',width: 5})});
+    var style2 =   new ol.style.Style({stroke: new ol.style.Stroke({color: '#cc33ff',width: 3})});
+    var style3 =   new ol.style.Style({stroke: new ol.style.Stroke({color: '#ff9600',width: 3})});
+
+    var selection = true;
+    var select = new ol.interaction.Select({
+        style: [style1,style1,style1]
+    });
+    map.addInteraction(select);
+
+    var selectPointerMove = new ol.interaction.Select({
+      condition: ol.events.condition.pointerMove,
+      style: [style2,style2,style2]
+    });
+    map.addInteraction(selectPointerMove);
+
+    var selectPointerMove2 = new ol.interaction.Select({
+      condition: ol.events.condition.pointerMove,
+      style: [style3,style3,style3]
+    });
+    map.addInteraction(selectPointerMove2);
+
+    selectPointerMove.on('select', function(e) {
+      var data = e.target.getFeatures().getArray();
+      if(data.length > 0){
+        showFeatures(data, 'hover');
+      }
+      else{
+        $("#hover").empty();  
+      }
+    });
+    select.on('select', function(e) {
+      var data = e.target.getFeatures().getArray();
+      if(data.length > 0){
+        showFeatures(data, 'popup');
+        centerMap(getFeatureCenter(data[0]));
+      }
+      else{
+        $("#popup").empty();  
+      }
+    });
+    // interactions - 0
+    ///////////////////////////////////////////////////////////////////////////
+
+    findMe();
+      </script>
+  </body>
+</html>
