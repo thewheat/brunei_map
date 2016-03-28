@@ -1,6 +1,7 @@
 # Brunei Map generated from Survey Department's Data
 
 - Created as part of [Brunei Geek Meet](http://bruneigeekmeet.com)'s data hackathon http://www.meetup.com/BruneiGeekMeet/events/229707511/
+- Demo: http://thewheat.github.io/brunei_map/
 
 ## Source Data
 - Source: http://survey.gov.bn/web/survey_department/map
