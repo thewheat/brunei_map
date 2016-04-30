@@ -25,8 +25,8 @@
         clear: both;
       }
       .popover{
-         max-width: 30em; 
-         width: 30em; 
+         max-width: 30em;
+         width: 30em;
       }
       .clear{
         clear: both;
@@ -87,7 +87,7 @@
     <div class="col-sm-4 toggleParent">
 
       <div class='btn-group'>
-        <button class='btn btn-info visible-xs-block' onclick='toggleMe(this)'>Search</button>      
+        <button class='btn btn-info visible-xs-block' onclick='toggleMe(this)'>Search</button>
         <span class='btn'><h4><span class='hidden-xs'>Showing: </span><span id='mode'></span></h4></span>
       </div>
 
@@ -101,7 +101,7 @@
     <div class="col-sm-4 toggleParent">
       <div class='clear selected colorbox hidden-xs'></div>
       <div class='btn-group'>
-        <button class='btn btn-info visible-xs-block' onclick='toggleMe(this)'>Show</button>      
+        <button class='btn btn-info visible-xs-block' onclick='toggleMe(this)'>Show</button>
         <span class='btn'><h4>Selected Area</h4></span>
       </div>
       <div class='selected colorbox'></div>
@@ -113,7 +113,7 @@
     <div class="col-sm-4 toggleParent">
       <div class='clear hover colorbox hidden-xs'></div>
       <div class='btn-group'>
-        <button class='btn btn-info visible-xs-block' onclick='toggleMe(this)'>Show</button>      
+        <button class='btn btn-info visible-xs-block' onclick='toggleMe(this)'>Show</button>
         <span class='btn'><h4>Hover Area</h4></span>
       </div>
       <div class='hover colorbox'></div>
@@ -220,8 +220,8 @@
                 map.getView().setCenter(toOL([pos.coords.longitude, pos.coords.latitude]));
 
                 }
-            }, function() { //Failure
-                alert("Could not get your location. Permission to read location has been denied");
+            }, function(e) { //Failure
+                alert("Could not get your location. Error message: " +  (e && e.message || "Unknown error"));
                 $("#find").text(ori);
             }, { //Options
                 enableHighAccuracy: true,
@@ -264,7 +264,7 @@
       if($("#searchOutput").children().size() == 0){
         $("#searchOutput").append("--No results--");
       }
-      
+
     }
     function centerMap(coordinate){
       map.getView().setCenter(coordinate);
@@ -307,7 +307,7 @@
     $("#searchOutput").on('click', 'a', function(e){
       e.preventDefault();
       console.log($(this));
-      console.log($(this).data('id'));      
+      console.log($(this).data('id'));
       selectItem(getMode(), $(this).data('id'),true);
     });
     $("#popup, #hover").on('click', '.neighbours a', function(e){
@@ -359,7 +359,7 @@
 
 
     ///////////////////////////////////////////////////////////////////////////
-    // interactions - 1 
+    // interactions - 1
 
     var style1 =   new ol.style.Style({stroke: new ol.style.Stroke({color: '#ff3333',width: 5})});
     var style2 =   new ol.style.Style({stroke: new ol.style.Stroke({color: '#cc33ff',width: 3})});
@@ -389,7 +389,7 @@
         showFeatures(data, 'hover');
       }
       else{
-        $("#hover").empty();  
+        $("#hover").empty();
       }
     });
     select.on('select', function(e) {
@@ -399,7 +399,7 @@
         centerMap(getFeatureCenter(data[0]));
       }
       else{
-        $("#popup").empty();  
+        $("#popup").empty();
       }
     });
     // interactions - 0
